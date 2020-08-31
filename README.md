@@ -2,5 +2,5 @@
 Letter case converter
 ## Environment
 Python 3.7.7
-## current function
+## Current Function
 click enter and recieve text from the backend
