@@ -8,7 +8,7 @@
 	<body>
 		<h2>Letter Case Converter</h2>
 		<p>status: <output id="txt-status"></output></p>
-		<form>
+		<form onsubmit="return false;">
 			<p>input:
 			<input type="text" id="inp-input"><input type="button" value="Enter" id="btn-enter" >
 			</p>
@@ -16,6 +16,7 @@
 		<p>output:
 		<output id="txt-output"></output>
 		</p>
+		<script src="scripts/protobufs/letters.js"></script>
 		<script src="scripts/main.js"></script>
 	</body>
 </html> 
