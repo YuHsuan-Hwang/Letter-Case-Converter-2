@@ -1,0 +1,6 @@
+syntax = "proto3";
+
+message Letters {
+	string input_letters = 1; // the string of inputs
+	int32 is_english = 2; // 1,0 check if all characters are alphabets, -1 if unchecked 
+}
