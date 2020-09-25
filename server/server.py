@@ -1,25 +1,30 @@
 #!/usr/bin/env python
 
-import websockets
-import asyncio
-import time
-import queue
 from datetime import datetime
+import websockets
+
 from protobufs.letters_pb2 import Letters
 import string
+import time
+
+import asyncio
 import concurrent.futures
-
-print( "(", datetime.now(), ") server started (press Ctrl-C to exit the server)" )
-
-client_num = 0 # number of clients connected to the server
+from threading import current_thread
 
 
-# construct job of receiving a message
-def LetterCaseConverter(websocket, message, message_queue):
 
-	# receive the message
-	print("(", datetime.now(), ") received message: ",message)
-	
+# task of sending to the client
+async def send(websocket, return_message_bytes):
+		
+	await websocket.send(return_message_bytes)
+	print ("(", datetime.now(), ") send back message: ",return_message_bytes)
+	print()
+
+# construct the main job of receiving a message
+def LetterCaseConverter(websocket, message):
+
+	print("(", datetime.now(), ") working in thread: ", current_thread())
+
 	# decode the message
 	return_message = Letters()
 	return_message.ParseFromString(message)
@@ -32,7 +37,7 @@ def LetterCaseConverter(websocket, message, message_queue):
 		return_message.is_english = 1
 		return_message.input_letters = return_message.input_letters.swapcase()
 	else:
-		# flase: enable the alert 
+		# false: enable the alert 
 		return_message.is_english = 0
 	print ("(", datetime.now(), ") converted message: ",return_message.input_letters,return_message.is_english)
 
@@ -40,17 +45,18 @@ def LetterCaseConverter(websocket, message, message_queue):
 	return_message_bytes = return_message.SerializeToString()
 	print ("(", datetime.now(), ") encoded converted message: ",return_message_bytes)
 	print()
-	
+
 	# if inputs are alphabets, wait for 10 sec
 	# if not, just send back and trigger the alert
 	if (return_message.is_english == 1):
 		time.sleep(10)
 
-	print("(", datetime.now(), ") end of thread",return_message_bytes)
-	message_queue.put(return_message_bytes)
+	# queue the task of sending back message in the main thread
+	print("(", datetime.now(), ") prepared to send message: ", return_message_bytes)	
+	asyncio.ensure_future(send(websocket,return_message_bytes), loop=loop)
 
 
-# construct the main task of a client connection
+# construct the task of a client connection
 async def OneClientTask(websocket, path):
 
 	# show the number of clients when new client is connected
@@ -59,24 +65,21 @@ async def OneClientTask(websocket, path):
 	print("(", datetime.now(), ") established one connection to ", websocket.remote_address[0],",", client_num, "client connected")
 	print()
 
-	message_queue = queue.Queue()	# storing output messages
-	executor = concurrent.futures.ThreadPoolExecutor() # threads managing
-	obj_list = [] # a list of the threads
+	# construct a pool of threads
+	executor = concurrent.futures.ThreadPoolExecutor() # defaulf max_workers=20
 
 	try:
 
 		# keep receiving message from the client
 		async for message in websocket:
 
-			# open a thread
-			obj_list.append( executor.submit(LetterCaseConverter, websocket, message, message_queue) )
+			# receive the message
+			print("(", datetime.now(), ") received message: ",message)
 
-			# send back the message
-			return_message_bytes = message_queue.get()
-			await websocket.send(return_message_bytes)
-			print ("(", datetime.now(), ") send back message: ",return_message_bytes)
-			print()
+			# construct a thread and run the main job in the thread
+			executor.submit(LetterCaseConverter, websocket, message)
 
+			print("(", datetime.now(), ") number of threads: ", len(executor._threads))
 
 	# listen to connection and show the number of clients when a client is disconnected	
 	except websockets.exceptions.ConnectionClosed:
@@ -85,6 +88,12 @@ async def OneClientTask(websocket, path):
 		client_num -= 1
 		print("(", datetime.now(), ") lost connection from ",websocket.remote_address[0],",", client_num, "client connected")
 		print()
+
+
+
+print( "(", datetime.now(), ") server started (press Ctrl-C to exit the server)" )
+
+client_num = 0 # number of clients connected to the server
 
 # create a event loop
 loop = asyncio.get_event_loop()
@@ -96,7 +105,8 @@ start_server = websockets.serve(OneClientTask, "localhost", 5675)
 try:
 	loop.run_until_complete(start_server)
 	loop.run_forever()
-# listen for ctl c to terminate the program
+
+# listen for ctrl c to terminate the program
 except KeyboardInterrupt:
 	loop.stop()
 	print("\n(", datetime.now(), ") exiting the server")

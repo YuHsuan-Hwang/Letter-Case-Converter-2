@@ -5,5 +5,5 @@ Delay for ten seconds and show text with letter case converted.
 Python 3.7.7
 
 ## Issue
-Threads do not work parallel under async/await syntax
-Not responsing to the backend when closing Chrome browser
+* Additional time delay before sending data to the client (may be due to thread managing)
+* Not responsing to the backend when closing Chrome browser
