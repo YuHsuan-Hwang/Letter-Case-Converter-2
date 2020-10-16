@@ -5,6 +5,8 @@
 
 #include <uWS/uWS.h>
 
+#include "protobufs/letters.pb.h"
+
 #include <thread>
 #include <chrono>
 
@@ -32,33 +34,56 @@ void OnDisconnection( uWS::WebSocket<uWS::SERVER>* ws, int code, char* message, 
 }
 
 // receive message from a client
-void OnMessage( uWS::WebSocket<uWS::SERVER>* ws, char* message, size_t length, uWS::OpCode opCode ) {
+void OnMessage( uWS::WebSocket<uWS::SERVER>* ws, char* raw_message, size_t length, uWS::OpCode opCode ) {
 
 	// receive message
 	time (&rawtime);
-	cout << "( " << strtok(ctime(&rawtime), "\n") << " ) received message: ";
-	for( int i=0; i<length; i++ ) cout << message[i];
-	cout << endl;
+	cout << "( " << strtok(ctime(&rawtime), "\n") << " ) receive message" << endl;
+
+	// pick the input message from the whole raw message
+	char message[length];
+	strncpy( message, raw_message, length );
+
+	// decode the message
+	Letters return_message;
+	return_message.ParseFromString(message);
+	time (&rawtime);
+	cout << "( " << strtok(ctime(&rawtime), "\n") << " ) decode message: " << return_message.input_letters() << ", " << return_message.is_english() << endl;
+
+
 
 	// convert lettercase
-	for( int i=0; i<length; i++ ) { 
-		char c = message[i];
-		if      ( isupper(c) ) c = tolower(c);
-		else if ( islower(c) ) c = toupper(c);
-		else cout << "unable to identify lettercase" << endl;
-		message[i] = c;
-	}   
+	string input_letters = return_message.input_letters();
+	for( int i=0; i<input_letters.length(); i++ ) { 
+		if      ( isupper(input_letters[i]) ) input_letters[i] = tolower(input_letters[i]);
+		else if ( islower(input_letters[i]) ) input_letters[i] = toupper(input_letters[i]);
+		else if ( !ispunct(input_letters[i]) & !isspace(input_letters[i]) ){
+			time (&rawtime);
+			cout << "( " << strtok(ctime(&rawtime), "\n") << " ) unable to identify lettercase" << endl;
+			return_message.set_is_english( 0 );
+		}
+	}
+	if ( return_message.is_english()==-1 ) return_message.set_is_english( 1 );
+	return_message.set_input_letters( input_letters );
+	time (&rawtime);
+	cout << "( " << strtok(ctime(&rawtime), "\n") << " ) converted message: " << return_message.input_letters() << ", " << return_message.is_english() << endl;
+
+
+
+	// encode the message
+	string return_message_bytes;
+	return_message.SerializeToString( &return_message_bytes );
 
 	// 10 sec time delay
-	this_thread::sleep_for( chrono::seconds(10) );
+	if ( return_message.is_english()==1 ) this_thread::sleep_for( chrono::seconds(10) );
 
 	// send converted message
 	time (&rawtime);
-	cout << "( " << strtok(ctime(&rawtime), "\n") << " ) send message: ";
-	for( int i=0; i<length; i++ ) cout << message[i];
-	cout << endl;
-	ws->send( message, length, opCode );
-
+	cout << "( " << strtok(ctime(&rawtime), "\n") << " ) send message" << endl;
+	char *return_message_bytes_cstr;
+	return_message_bytes_cstr = new char[return_message_bytes.size()+1];
+	strcpy(return_message_bytes_cstr, return_message_bytes.c_str());
+	ws->send( return_message_bytes_cstr, opCode );
 }
 
 

@@ -23,10 +23,6 @@ function EnterClick(event){
   message.setIsEnglish(-1);
   console.log(new Date(),"input message: ",message.getInputLetters(),message.getIsEnglish());
 
-	ws.send(inpInput.value);
-	console.log(new Date(),"message sent");
-
-	/*
 	// encode the message
   let message_bytes = message.serializeBinary();
   console.log(new Date(),"serialized: ",message_bytes);
@@ -34,7 +30,7 @@ function EnterClick(event){
 	// send the encoded message to the server  
 	ws.send(message_bytes);
   console.log(new Date(),"message sent");
-	*/
+	
 
 }
 
@@ -54,16 +50,11 @@ ws.binaryType = "arraybuffer";
 // print out the result if receive message from the server
 ws.onmessage = function (event) {
 
-	/*
+	
 	// receive the message
 	let return_message_bytes = new Uint8Array(event.data);
 	console.log(new Date(),"received message: ",return_message_bytes);
-	*/
-
-	txtOutput.value = event.data;
-	console.log(new Date(),event.data,"result displayed");
-
-	/*
+	
 	// decode the message
 	let return_message = proto.Letters.deserializeBinary(return_message_bytes);
 	console.log(new Date(),"decode message: ",return_message.getInputLetters(),return_message.getIsEnglish());
@@ -80,7 +71,7 @@ ws.onmessage = function (event) {
 	else {
 		alert("error");
 	}
-	*/
+	
 };
 
 // update the status if the connection is closed
